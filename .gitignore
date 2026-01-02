@@ -1,0 +1,90 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+lib_deps/
+
+# Build artifacts
+*.o
+*.elf
+*.hex
+*.bin
+*.a
+*.so
+
+# Releases
+releases/
+firmware_*.hex
+firmware_*.elf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+test_results.json
+*.log
+
+# Documentation
+docs/doxygen/
+docs/html/
+docs/latex/
+docs/_build/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+.temp/
+tmp/
+
+# OS specific
+Thumbs.db
+.DS_Store
+.directory
+
+# Editor specific
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+*.sublime-project
+
+# Arduino IDE
+*.ino.cpp
+*.ino.hex
+
+# Analysis
+cppcheck-report.xml
+*.sarif
