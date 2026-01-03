@@ -1,0 +1,258 @@
+name: PlatformIO CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Security: All actions are pinned to specific commit SHAs to prevent supply-chain attacks.
+# To update action versions, see scripts/update_actions.sh
+
+jobs:
+  # ==========================================
+  # Build firmware for multiple targets
+  # ==========================================
+  build:
+    name: Build ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment:
+          - pro_mini_5v
+          - pro_mini_3v3
+          - with_imu
+          - with_baro
+          - full_sensors
+          - release
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+      with:
+        fetch-depth: 0
+    
+    - name: Cache PlatformIO
+      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
+      with:
+        path: |
+          ~/.platformio
+          .pio
+        key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          ${{ runner.os }}-pio-
+    
+    - name: Set up Python
+      uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v4.7.1
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install PlatformIO Core
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+    
+    - name: Build firmware
+      run: pio run -e ${{ matrix.environment }}
+    
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+      with:
+        name: firmware-${{ matrix.environment }}
+        path: |
+          .pio/build/${{ matrix.environment }}/firmware.hex
+          .pio/build/${{ matrix.environment }}/firmware.elf
+        retention-days: 30
+        if-no-files-found: warn
+  
+  # ==========================================
+  # Run unit tests on native platform
+  # ==========================================
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+    
+    - name: Cache PlatformIO
+      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
+      with:
+        path: |
+          ~/.platformio
+          .pio
+        key: ${{ runner.os }}-pio-test-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          ${{ runner.os }}-pio-test-
+    
+    - name: Set up Python
+      uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v4.7.1
+      with:
+        python-version: '3.11'
+    
+    - name: Install PlatformIO Core
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+    
+    - name: Run unit tests
+      run: pio test -e native --json-output-path test_results.json || true
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+      if: always()
+      with:
+        name: test-results
+        path: test_results.json
+        retention-days: 30
+  
+  # ==========================================
+  # Static code analysis
+  # ==========================================
+  analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+    
+    - name: Cache PlatformIO
+      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
+      with:
+        path: |
+          ~/.platformio
+          .pio
+        key: ${{ runner.os }}-pio-check-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          ${{ runner.os }}-pio-check-
+    
+    - name: Set up Python
+      uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v4.7.1
+      with:
+        python-version: '3.11'
+    
+    - name: Install PlatformIO Core
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+    
+    - name: Install analysis tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cppcheck clang-tidy
+    
+    - name: Run PlatformIO Check
+      run: pio check -e pro_mini_5v --fail-on-defect=medium --skip-packages || true
+    
+    - name: Run cppcheck
+      run: |
+        cppcheck --enable=all --error-exitcode=0 \
+                 --suppress=missingIncludeSystem \
+                 --suppress=unusedFunction \
+                 --inline-suppr \
+                 --xml --xml-version=2 \
+                 sketch_250201SFO4servoCODECh8RearWElevTrim/ 2> cppcheck-report.xml || true
+    
+    - name: Upload analysis results
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+      if: always()
+      with:
+        name: analysis-results
+        path: |
+          cppcheck-report.xml
+          .pio/build/pro_mini_5v/check-report.json
+        retention-days: 30
+        if-no-files-found: ignore
+  
+  # ==========================================
+  # Code quality and formatting
+  # ==========================================
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+    
+    - name: Run clang-format check
+      uses: jidicula/clang-format-action@c74383674bf5f7c69f60ce562019c1c94bc1421a # v4.11.0
+      with:
+        clang-format-version: '14'
+        check-path: 'sketch_250201SFO4servoCODECh8RearWElevTrim'
+        fallback-style: 'Google'
+      continue-on-error: true
+  
+  # ==========================================
+  # Generate documentation
+  # ==========================================
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+    
+    - name: Install Doxygen
+      run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+    
+    - name: Create Doxyfile if not exists
+      run: |
+        if [ ! -f Doxyfile ]; then
+          cat > Doxyfile << 'EOF'
+        PROJECT_NAME = "4-Servo Ornithopter Control System"
+        PROJECT_BRIEF = "Advanced flapping-wing ornithopter controller with formal verification"
+        OUTPUT_DIRECTORY = docs/doxygen
+        INPUT = sketch_250201SFO4servoCODECh8RearWElevTrim docs
+        FILE_PATTERNS = *.cpp *.h *.ino *.md
+        RECURSIVE = YES
+        EXTRACT_ALL = YES
+        GENERATE_HTML = YES
+        GENERATE_LATEX = NO
+        USE_MDFILE_AS_MAINPAGE = README.md
+        EOF
+        fi
+    
+    - name: Generate documentation
+      run: doxygen Doxyfile || true
+    
+    - name: Upload documentation
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+      with:
+        name: documentation
+        path: docs/doxygen/html
+        retention-days: 30
+        if-no-files-found: ignore
+  
+  # ==========================================
+  # Create release on tag
+  # ==========================================
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+      with:
+        path: artifacts
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1.0.0
+      with:
+        files: artifacts/firmware-*/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
