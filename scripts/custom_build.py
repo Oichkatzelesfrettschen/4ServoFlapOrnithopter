@@ -85,8 +85,9 @@ def after_build(source, target, env):
         )
         print("\nFirmware Size:")
         print(size_output)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        # Firmware size is non-critical; log failure but do not abort build.
+        print("Warning: could not determine firmware size:", e)
     
     print(f"\n✓ Build artifacts saved to: {release_dir}/")
     print(f"  Base name: {release_name}\n")
