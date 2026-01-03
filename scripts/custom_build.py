@@ -5,7 +5,6 @@ Copies firmware to releases folder and generates build report.
 """
 
 Import("env")
-import os
 import shutil
 from pathlib import Path
 
