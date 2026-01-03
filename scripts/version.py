@@ -7,7 +7,6 @@ Automatically adds git hash and build timestamp to firmware.
 Import("env")
 import subprocess
 from datetime import datetime
-import sys
 
 def get_git_hash():
     """Get current git commit hash."""
