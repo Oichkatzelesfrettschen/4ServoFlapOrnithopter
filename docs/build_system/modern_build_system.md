@@ -177,6 +177,8 @@ lib_deps =
 
 ### 2.1 CI/CD Workflow
 
+**Security Note**: All GitHub Actions are pinned to specific commit SHAs rather than mutable tags to prevent supply-chain attacks. This ensures that even if an action's tag is moved or the repository is compromised, your workflows will continue using the verified version. See `scripts/update_actions.sh` for the maintenance procedure.
+
 ```yaml
 # .github/workflows/ci.yml
 name: PlatformIO CI
@@ -186,6 +188,9 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+
+# Security: All actions are pinned to specific commit SHAs to prevent supply-chain attacks.
+# To update action versions, see scripts/update_actions.sh
 
 jobs:
   # ==========================================
@@ -202,10 +207,10 @@ jobs:
           - full_sensors
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
     
     - name: Cache PlatformIO
-      uses: actions/cache@v3
+      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
       with:
         path: |
           ~/.platformio
@@ -244,10 +249,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v4.7.1
       with:
         python-version: '3.x'
     
@@ -265,7 +270,7 @@ jobs:
         pio test -e native --json-output-path test_results.json
     
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
       with:
         name: test-results
         path: test_results.json
@@ -277,7 +282,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
     
     - name: Install Doxygen
       run: sudo apt-get install -y doxygen graphviz
@@ -285,12 +290,12 @@ jobs:
     - name: Generate documentation
       run: doxygen Doxyfile
     
-    - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main'
-      uses: peaceiris/actions-gh-pages@v3
+    - name: Upload documentation artifacts
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./docs/html
+        name: documentation
+        path: ./docs/html
+        retention-days: 30
   
   # ==========================================
   # Code quality checks
@@ -299,10 +304,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
     
     - name: Run clang-format check
-      uses: jidicula/clang-format-action@v4.11.0
+      uses: jidicula/clang-format-action@c74383674bf5f7c69f60ce562019c1c94bc1421a # v4.11.0
       with:
         clang-format-version: '14'
         check-path: 'src'
@@ -311,6 +316,42 @@ jobs:
       run: |
         sudo apt-get install -y cppcheck
         cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem src/
+```
+
+### 2.2 GitHub Actions Security Best Practices
+
+#### Pinning Actions to Commit SHAs
+
+**Why**: Mutable tags (e.g., `@v3`, `@v4.11.0`) can be moved or compromised, creating supply-chain vulnerabilities. Pinning to specific commit SHAs ensures immutability.
+
+**Implementation**:
+```yaml
+# ❌ Bad: Mutable tag
+- uses: actions/checkout@v3
+
+# ✅ Good: Pinned to commit SHA with version comment
+- uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+```
+
+**Maintenance**: Use the provided `scripts/update_actions.sh` script to check for updates and generate new SHA-pinned references:
+
+```bash
+# Check for action updates
+./scripts/update_actions.sh --check
+
+# Update to latest versions
+./scripts/update_actions.sh --update
+```
+
+#### Action Security Checklist
+
+- ✅ All actions pinned to commit SHAs
+- ✅ Version comments included for human readability
+- ✅ Periodic review schedule (quarterly recommended)
+- ✅ Use official GitHub actions when possible
+- ✅ Audit third-party actions before adoption
+- ✅ Minimize `secrets` exposure
+- ✅ Use `GITHUB_TOKEN` with least privilege
 ```
 
 ## 3. Unit Testing Framework

@@ -20,7 +20,8 @@ This repository contains a **research-grade flight control system** with:
 
 - ✨ **Comprehensive R&D documentation** covering mathematics, materials, sensors, ML, and formal methods
 - 🔧 **PlatformIO build system** with multi-target support
-- 🤖 **GitHub Actions CI/CD** for automated testing and deployment
+- 🤖 **GitHub Actions CI/CD** with SHA-pinned actions for security
+- 🔒 **Supply-chain security** - all actions pinned to commit SHAs
 - 📐 **Quaternion-based orientation tracking** (singularity-free rotations)
 - 🧠 **Machine learning framework** (MLP for adaptive control)
 - ✅ **Formal verification** with TLA+ and Z3
@@ -141,6 +142,7 @@ This project includes extensive research and development documentation:
 - **[Machine Learning](docs/ml_algorithms/mlp_situational_awareness.md)** - MLP architectures, reinforcement learning, situational awareness
 - **[Formal Methods](docs/formal_methods/tlaplus_z3_verification.md)** - TLA+ specifications, Z3 constraint solving
 - **[Build System](docs/build_system/modern_build_system.md)** - PlatformIO, CI/CD, testing framework
+- **[GitHub Actions Security](docs/build_system/github_actions_security.md)** - Supply-chain security, action pinning best practices
 
 ### Quick Start Guides
 - [Building with PlatformIO](#-building-with-platformio)
